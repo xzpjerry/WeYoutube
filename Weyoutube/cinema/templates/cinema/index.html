@@ -5,8 +5,10 @@
 {% endblock %}
 
 {% block body_block %}
-  <h1>Enter the room to watch with your friend</h1>
-  <form action="/enter" method="post" id="enterForm">
+  <center>
+    <button id='enterbtn' class="btn btn-primary">Enter a room</button>
+    <button id='createbtn' class="btn btn-primary">Create a room</button>
+  <form action="/enter" method="post" id="enterForm" style="display: none;">
     <label for="room_id">Room Number:</label><br>
     <input type="text" maxlength="4" id="room_id" name="room_id"><br>
     <label for="secret">Secret:</label><br>
@@ -15,4 +17,11 @@
     <input type="text" maxlength="32" id="username" name="username"><br>
     <input type="submit" class="btn btn-primary" id="modal-confirm" value="Enter"><br>
   </form>
+  <form action="/create" method="post" id="createForm" style="display: none;">
+    <label for="username">Username:</label><br>
+    <input type="text" maxlength="32" id="username" name="username"><br>
+    <input type="submit" class="btn btn-primary" id="modal-confirm" value="Create"><br>
+  </form>
+</center>
+  <script src="{{ url_for('cinema.static', filename='cinema/form_action.js') }}"></script>
 {% endblock %}

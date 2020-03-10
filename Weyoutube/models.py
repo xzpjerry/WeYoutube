@@ -11,7 +11,8 @@ class Room(db.Model):
     secret = db.Column(db.SmallInteger)
     current_playing_video_ID = db.Column(db.String(24), default = 'QaQdY7iI75c')
     current_isplaying = db.Column(db.Boolean, default = False)
-    current_seek = db.Column(db.Float, default=0.0)
+    current_seek = db.Column(db.Float, default=10.0)
+    users = db.relationship('User', backref='room', lazy=True, cascade="all,delete")
 
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
@@ -34,10 +35,7 @@ class User(UserMixin, db.Model):
     '''
     id = db.Column(db.Integer, primary_key = True)
     username = db.Column(db.String(32), unique = True)
-    room_id = db.Column(db.Integer, db.ForeignKey('room.id'))
-    room = db.relationship('Room', backref = db.backref('users', lazy = True, uselist = True))
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id'), nullable=False)
 
-    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    
     def __repr__(self):
         return 'User ' + str(self.id) 

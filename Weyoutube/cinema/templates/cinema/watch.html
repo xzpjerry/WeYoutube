@@ -1,13 +1,16 @@
 {% extends "base.html" %}
 
 {% block title_block %}
-    <title>Sign up Page</title>
+    <title>Cinema</title>
 {% endblock %}
 
 {% block body_block %}
+  <a class="btn btn-secondary" href="/leave/{{ current_user.id }}">Leave</a><br>
+  <a>Currently in the room:</a><a id="roster"></a>
+  <br>
   <!-- 1. The <iframe> (and video player) will replace this <div> tag. -->
     <div id="player"></div>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
+    <script src="{{ url_for('cinema.static', filename='cinema/socket.io.js') }}"></script>
     <script>
       // 2. This code loads the IFrame Player API code asynchronously.
       var tag = document.createElement('script');
@@ -23,7 +26,7 @@
         player = new YT.Player('player', {
           height: '360',
           width: '640',
-          videoId: 'M7lc1UVf-VE',
+          videoId: '{{ current_user.room.current_playing_video_ID }}',
           events: {
             'onReady': onPlayerReady,
             'onStateChange': onPlayerStateChange
@@ -33,7 +36,10 @@
 
       // 4. The API will call this function when the video player is ready.
       function onPlayerReady(event) {
-        event.target.playVideo();
+        event.target.seekTo({{ current_user.room.current_seek }});
+        if(!{{ 1 if current_user.room.current_isplaying else 0 }}){
+          event.target.pauseVideo();
+        }
       }
 
       // 5. The API calls this function when the player's state changes.
@@ -49,9 +55,18 @@
       function stopVideo() {
         player.stopVideo();
       }
+    
     var socket = io();
-    socket.on('connect', function() {
-        socket.emit('my event', {data: 'I\'m connected!'});
+    socket.on('connect', function(data) {
+        socket.emit('join', {room: {{ current_user.room.id }}, user_id: "{{ current_user.id }}"});
+    });
+    socket.on('join_response', function(data) {
+        console.log(data)
+        $("#roster").html(data)
+    });
+    socket.on('disconnect_response', function(data) {
+        console.log(data)
+        $("#roster").html(data)
     });
 
     </script>
