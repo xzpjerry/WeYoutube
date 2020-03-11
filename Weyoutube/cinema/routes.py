@@ -1,8 +1,9 @@
 #################
 #### imports ####
 #################
-import random
+import random, uuid
 
+import flask
 from flask import render_template, redirect, flash, request, jsonify
 from flask_login import login_required, current_user, logout_user, login_user
 from flask_socketio import join_room, leave_room, emit, send
@@ -40,8 +41,11 @@ def create_cinema():
             res['errors'] = ['This Username has been used; please try another one.']
         else:
             target_room = Room(secret = gen_4digits())
-            newuser = User(username = username, room=target_room)
-            db.session.add(target_room) 
+            newuser = User(username = username, room=target_room, room_id=target_room.id)
+            target_room.owner_id = newuser.id
+            target_room.owner = newuser
+
+            db.session.add(target_room)
             db.session.add(newuser)
             db.session.commit()
             login_user(newuser, remember=True)
@@ -96,12 +100,13 @@ def enter_cinema():
         res['errors'] = ['You must filled out all values.']
     return jsonify(res), code
 
-@cinema_blueprint.route('/leave/<int:user_id>', methods=('GET',))
+@cinema_blueprint.route('/leave', methods=('GET',))
 @login_required
-def leave(user_id):
+def leave():
+    user_id = current_user.id
     target = User.query.filter_by(id=user_id).first()
     if target:
-        if len(target.room.users) == 1:
+        if target.room.owner_id == target.id:
             db.session.delete(target.room)
         db.session.delete(target)
         db.session.commit()
@@ -112,7 +117,7 @@ def leave(user_id):
 def watch():
     return render_template('cinema/watch.html')
 
-@cinema_blueprint.route('/get/<int:room_id>', methods=('GET', ))
+@cinema_blueprint.route('/get_play_detail', methods=('GET', ))
 @login_required
 def get_play_detail():
     room = current_user.room
@@ -127,28 +132,55 @@ def get_play_detail():
 
 @socketio.on('join')
 def on_join(data):
-    print(data['user_id'], 'joined.', 'from', data['room'])
+    user_id = data['user_id']
     room_id = data['room']
     join_room(room_id)
+    session_id = request.sid
+    user_obj = User.query.filter_by(id = user_id).first()
     room_obj = Room.query.filter_by(id = room_id).first()
     res = []
+    if user_obj:
+        user_obj.session_id = session_id
+        db.session.commit()
     if room_obj:
         res = [user.username for user in room_obj.users]
-    emit('join_response', str({'usernames': res}), room=room_id)
+    emit('people_changed_response', str({'usernames': res}), room=room_id)
 
+@socketio.on('player_state_changed')
+def on_state_change(data):
+    room_id = data['room']
+    room_obj = Room.query.filter_by(id = room_id).first()
+    if room_obj and request.sid == room_obj.owner.session_id:
+        seek = data['seek']
+        url = data['url']
+        isPlaying = data['playing']
+        vid = url[url.index('v=') + 2:]
+        same_vid = room_obj.current_playing_video_ID == vid
+        room_obj.current_playing_video_ID = vid
+        room_obj.current_isplaying = isPlaying
+        room_obj.current_seek = seek
+        db.session.commit()
+        res = {
+            'vid': vid,
+            'playing': isPlaying,
+            'seek': seek,
+            'same_vid': same_vid,
+        }
+        emit('player_state_changed_response', res, room=room_id)
 
-'''
-Working on this
-'''
-# @socketio.on('disconnect')
-# def on_leave():
-#     session_id = request.sid
-#     print('Someone disconnected', room_id)
-#     room_obj = Room.query.filter_by(id = room_id).first()
-#     res = []
-#     if room_obj:
-#         res = [user.username for user in room_obj.users]
-#     emit('disconnect_response', str({'usernames': res}), room=room_id)
+@socketio.on('disconnect')
+def on_leave():
+    session_id = request.sid
+    target = User.query.filter_by(session_id = session_id).first()
+    if target:
+        if target.room.owner_id == target.id:
+            db.session.delete(target.room)
+        else:
+            room_obj = target.room
+            res = [user.username for user in room_obj.users if not user.id == target.id]
+            emit('people_changed_response', str({'usernames': res}), room=room_obj.id)
+        db.session.delete(target)
+        db.session.commit()
 
 ##############################
 #### For Debuging Purpose ####
@@ -159,8 +191,11 @@ def get_all_current_users():
     tmp = User.query.all()
     for user in tmp:
         sub_res = {}
-        sub_res['Room id'] = user.room.id
-        sub_res['Room secret'] = user.room.secret
+        sub_res['id'] = user.id
+        sub_res['session_id'] = user.session_id
+        sub_res['username'] = user.username
+        sub_res['room_id'] = user.room_id
+        sub_res['owned_room_id'] = user.owned_room.id if user.owned_room else -1
         res[user.username] = sub_res
     return jsonify(res)
 
@@ -174,6 +209,7 @@ def get_all_rooms():
         sub_res['current_isplaying'] = room.current_isplaying
         sub_res['current_seek'] = room.current_seek
         sub_res['users'] = []
+        sub_res['owner'] = room.owner.username
         for user in room.users:
             sub_res['users'].append(user.username)
         sub_res['Room secret'] = room.secret

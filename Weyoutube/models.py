@@ -12,8 +12,10 @@ class Room(db.Model):
     current_playing_video_ID = db.Column(db.String(24), default = 'QaQdY7iI75c')
     current_isplaying = db.Column(db.Boolean, default = False)
     current_seek = db.Column(db.Float, default=10.0)
-    users = db.relationship('User', backref='room', lazy=True, cascade="all,delete")
 
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
+    owner = db.relationship('User', foreign_keys=owner_id, backref = db.backref('owned_room', lazy = True, uselist = False), cascade="delete")
+    
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     @classmethod
@@ -34,8 +36,9 @@ class User(UserMixin, db.Model):
     self.resume : Resume
     '''
     id = db.Column(db.Integer, primary_key = True)
+    session_id = db.Column(db.String(32), unique = True)
     username = db.Column(db.String(32), unique = True)
-    room_id = db.Column(db.Integer, db.ForeignKey('room.id'), nullable=False)
-
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id'), default=-1)
+    room = db.relationship('Room', foreign_keys=room_id, backref = db.backref('users', lazy = True), post_update=True)
     def __repr__(self):
         return 'User ' + str(self.id) 
