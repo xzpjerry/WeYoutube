@@ -32,7 +32,7 @@ def create_cinema():
     res = {}
     code = 200
     data = request.form
-    username = data.get('username', False)
+    username = data.get('owner_username', False)
     if username:
         target_user = User.query.filter_by(username = username).first()
         if target_user:
@@ -61,7 +61,7 @@ def enter_cinema():
     res = {}
     code = 200
     data = request.form
-    username = data.get('username', False)
+    username = data.get('guest_username', False)
     room_id = data.get('room_id', False)
     secret = data.get('secret', False)
     if username and room_id and secret:
@@ -107,7 +107,12 @@ def leave():
     target = User.query.filter_by(id=user_id).first()
     if target:
         if target.room.owner_id == target.id:
-            db.session.delete(target.room)
+            socketio.emit('room_dismissed', 'The room was closed.', room=target.room.id)
+        else:
+            room_obj = target.room
+            res = [user.username for user in room_obj.users if not user.id == target.id]
+            socketio.emit('people_changed_response', str([res]), room=room_obj.id)
+        logout_user()
         db.session.delete(target)
         db.session.commit()
     return redirect('/')
@@ -132,25 +137,19 @@ def get_play_detail():
 
 @socketio.on('join')
 def on_join(data):
-    user_id = data['user_id']
-    room_id = data['room']
+    room_id = current_user.room.id
     join_room(room_id)
     session_id = request.sid
-    user_obj = User.query.filter_by(id = user_id).first()
-    room_obj = Room.query.filter_by(id = room_id).first()
-    res = []
-    if user_obj:
-        user_obj.session_id = session_id
-        db.session.commit()
-    if room_obj:
-        res = [user.username for user in room_obj.users]
-    emit('people_changed_response', str({'usernames': res}), room=room_id)
+    room_obj = current_user.room
+    current_user.session_id = session_id
+    res = [user.username for user in room_obj.users]
+    emit('people_changed_response', str(res), room=room_obj.id)
+    db.session.commit()
 
 @socketio.on('player_state_changed')
 def on_state_change(data):
-    room_id = data['room']
-    room_obj = Room.query.filter_by(id = room_id).first()
-    if room_obj and request.sid == room_obj.owner.session_id:
+    room_obj = current_user.room
+    if request.sid == room_obj.owner.session_id:
         seek = data['seek']
         url = data['url']
         isPlaying = data['playing']
@@ -159,14 +158,14 @@ def on_state_change(data):
         room_obj.current_playing_video_ID = vid
         room_obj.current_isplaying = isPlaying
         room_obj.current_seek = seek
-        db.session.commit()
         res = {
             'vid': vid,
             'playing': isPlaying,
             'seek': seek,
             'same_vid': same_vid,
         }
-        emit('player_state_changed_response', res, room=room_id)
+        emit('player_state_changed_response', res, room=room_obj.id)
+        db.session.commit()
 
 @socketio.on('disconnect')
 def on_leave():
@@ -175,6 +174,7 @@ def on_leave():
     if target:
         if target.room.owner_id == target.id:
             db.session.delete(target.room)
+            emit('room_dismissed', 'The room was closed.', room=target.room.id)
         else:
             room_obj = target.room
             res = [user.username for user in room_obj.users if not user.id == target.id]

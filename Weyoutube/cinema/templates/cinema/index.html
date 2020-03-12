@@ -13,12 +13,12 @@
     <label for="secret">Secret:</label><br>
     <input type="text" maxlength="4" id="secret" name="secret"><br>
     <label for="username">Username:</label><br>
-    <input type="text" maxlength="32" id="username" name="username"><br>
+    <input type="text" maxlength="32" id="guest_username" name="guest_username"><br>
     <input type="submit" class="btn btn-primary" id="modal-confirm" value="Enter"><br>
   </form>
   <form action="/create" method="post" id="createForm" style="display: none;">
     <label for="username">Username:</label><br>
-    <input type="text" maxlength="32" id="username" name="username"><br>
+    <input type="text" maxlength="32" id="owner_username" name="owner_username"><br>
     <input type="submit" class="btn btn-primary" id="modal-confirm" value="Create"><br>
   </form>
   <script src="{{ url_for('cinema.static', filename='cinema/form_action.js') }}"></script>

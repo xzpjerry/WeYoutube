@@ -14,7 +14,7 @@ class Room(db.Model):
     current_seek = db.Column(db.Float, default=10.0)
 
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
-    owner = db.relationship('User', foreign_keys=owner_id, backref = db.backref('owned_room', lazy = True, uselist = False), cascade="delete")
+    owner = db.relationship('User', foreign_keys=owner_id, backref = db.backref('owned_room', lazy = True, uselist = False, cascade="all, delete"), uselist=False, cascade="all, delete")
     
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
@@ -39,6 +39,6 @@ class User(UserMixin, db.Model):
     session_id = db.Column(db.String(32), unique = True)
     username = db.Column(db.String(32), unique = True)
     room_id = db.Column(db.Integer, db.ForeignKey('room.id'), default=-1)
-    room = db.relationship('Room', foreign_keys=room_id, backref = db.backref('users', lazy = True), post_update=True)
+    room = db.relationship('Room', foreign_keys=room_id, backref = db.backref('users', lazy = True, cascade='all, delete'), post_update=True, uselist=False)
     def __repr__(self):
         return 'User ' + str(self.id) 
