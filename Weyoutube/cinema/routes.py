@@ -4,7 +4,7 @@
 import random, uuid
 
 import flask
-from flask import render_template, redirect, flash, request, jsonify
+from flask import render_template, redirect, flash, request, jsonify, abort
 from flask_login import login_required, current_user, logout_user, login_user
 from flask_socketio import join_room, leave_room, emit, send
 
@@ -100,22 +100,27 @@ def enter_cinema():
         res['errors'] = ['You must filled out all values.']
     return jsonify(res), code
 
-@cinema_blueprint.route('/leave', methods=('GET',))
+@cinema_blueprint.route('/leave/<string:sid>', methods=('DELETE',))
 @login_required
-def leave():
-    user_id = current_user.id
-    target = User.query.filter_by(id=user_id).first()
-    if target:
-        if target.room.owner_id == target.id:
-            socketio.emit('room_dismissed', 'The room was closed.', room=target.room.id)
-        else:
-            room_obj = target.room
-            res = [user.username for user in room_obj.users if not user.id == target.id]
-            socketio.emit('people_changed_response', str([res]), room=room_obj.id)
-        logout_user()
-        db.session.delete(target)
-        db.session.commit()
-    return redirect('/')
+def leave(sid):
+    if not sid == current_user.session_id:
+        return jsonify({'success': False, 'errors': 'You are not that user!'}), 401
+    target = User.query.filter_by(id=current_user.id).first()
+    room_dismissed = False
+    res = []
+    if target.room.owner_id == target.id:
+        room_dismissed = True
+    else:
+        room_obj = target.room
+        res = [user.username for user in room_obj.users if not user.id == target.id]
+    logout_user()
+    db.session.delete(target)
+    if room_dismissed:
+        socketio.emit('room_dismissed', 'The room was closed.', room=target.room.id)
+    else:
+        socketio.emit('people_changed_response', str([res]), room=room_obj.id)
+    db.session.commit()
+    return jsonify({'success': True}), 200
 
 @cinema_blueprint.route('/watch', methods=('GET', ))
 @login_required
@@ -144,6 +149,7 @@ def on_join(data):
     current_user.session_id = session_id
     res = [user.username for user in room_obj.users]
     emit('people_changed_response', str(res), room=room_obj.id)
+    emit('returning_sid', session_id, room=session_id)
     db.session.commit()
 
 @socketio.on('player_state_changed')

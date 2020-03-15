@@ -6,7 +6,7 @@
 
 {% block body_block %}
   <!-- <meta id="current_user" data-id="{{current_user.id}}" data-other="{{other}}"> -->
-  <a class="btn btn-secondary" href="/leave">Leave</a><br>
+  <a class="btn btn-secondary" onclick="leaving()">Leave</a><br>
   <a>Currently in the room:</a><a id="roster"></a>
   <br>
     <div id="player"></div>
@@ -16,6 +16,28 @@
     {% else %}
       <script src="{{ url_for('cinema.static', filename='cinema/watch_as_owner.js') }}"></script>
     {% endif %}
+
+    <script>
+      var sid;
+      socket.on('returning_sid', function(data) {
+        sid = data;
+        console.log(sid)
+      });
+      function leaving(){
+        $.ajax({
+          type: "DELETE",
+          url: "/leave/" + sid,
+          success: function()
+            {
+              window.location.href = "/";
+            },
+          error: function(xhr){
+              var error = JSON.parse(xhr.responseText);
+              alert(error['errors']);
+            }
+          });
+      }
+    </script>
   
 
 {% endblock %}
