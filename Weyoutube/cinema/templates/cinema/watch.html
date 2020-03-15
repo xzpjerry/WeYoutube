@@ -6,6 +6,8 @@
 
 {% block body_block %}
   <a class="btn btn-secondary" onclick="leaving()">Leave</a><br>
+  <a id="room_id">You are in room with id: </a>
+  <br>
   <a>Currently in the room:</a><a id="roster"></a>
   <br>
     <div id="player"></div>
@@ -13,16 +15,19 @@
     {% if not current_user.session_id == current_user.room.owner.session_id %}
       <script src="{{ url_for('cinema.static', filename='cinema/watch_as_guest.js') }}"></script>
     {% else %}
+      <br>
       <input type="text" id="txt" placeholder="Type Youtube url" />
       <input type="button" onclick="check_and_apply(this)" value="Apply URL" />
+      <br>
+      <p id="secret">Room secret: </p>
       <script src="{{ url_for('cinema.static', filename='cinema/watch_as_owner.js') }}"></script>
     {% endif %}
 
     <script>
       var sid;
-      socket.on('returning_sid', function(data) {
-        sid = data;
-        console.log(sid)
+      socket.on('returning_sid_room_id', function(data) {
+        sid = data['session_id'];
+        $('#room_id').append(data['room_id'])
       });
       function leaving(){
         $.ajax({

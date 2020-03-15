@@ -7,7 +7,20 @@ firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 var player;
 var just_ready = true;
 var socket = io();
-
+socket.on('connect', function(data) {
+    socket.emit('join', 'I\'m in');
+});
+socket.on('people_changed_response', function(data) {
+    $("#roster").html(data)
+});
+socket.on('returning_secret', function(data) {
+    $('#secret').append(data)
+  });
+socket.on('room_dismissed', function(data) {
+    if(confirm(data)){
+        window.location.href = '/'
+    }
+});
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '360',
@@ -17,6 +30,7 @@ function onYouTubeIframeAPIReady() {
             enablejsapi: 1,
             loop: 1,
             cc_lang_pref: 'en',
+            rel: 0,
         },
         events: {
             'onReady': onPlayerReady,
@@ -45,15 +59,21 @@ function onPlayerReady(event) {
 }
 function onPlayerStateChange(event) {
     if(!just_ready) {
-        socket.emit('player_state_changed', 
+        update_progress();
+        window.setInterval("update_progress();", 5000);
+    }
+    just_ready = false
+}
+
+function update_progress() {
+    console.log('Updateing progress')
+    socket.emit('player_state_changed', 
         { 
             seek: player.getCurrentTime(),
             url: player.getVideoUrl(),
-            playing: event.data == YT.PlayerState.PLAYING,
+            playing: player.getPlayerState() == 1,
         }
     );
-    }
-    just_ready = false
 }
 
 function matchYoutubeUrl(url) {
@@ -74,13 +94,3 @@ function check_and_apply(sender){
     }
 }
 
-socket.on('connect', function(data) {
-    socket.emit('join', 'I\'m in');
-});
-socket.on('people_changed_response', function(data) {
-    $("#roster").html(data)
-});
-socket.on('room_dismissed', function(data) {
-    alert(data)
-    window.location.href = '/'
-});

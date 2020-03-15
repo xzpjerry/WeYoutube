@@ -1,7 +1,7 @@
 #################
 #### imports ####
 #################
-import random, uuid
+import random, uuid, datetime
 
 import flask
 from flask import render_template, redirect, flash, request, jsonify, abort
@@ -107,6 +107,7 @@ def leave(sid):
         return jsonify({'success': False, 'errors': 'You are not that user!'}), 401
     target = User.query.filter_by(id=current_user.id).first()
     room_dismissed = False
+    room_id = current_user.room_id
     res = []
     if target.room.owner_id == target.id:
         room_dismissed = True
@@ -115,11 +116,11 @@ def leave(sid):
         res = [user.username for user in room_obj.users if not user.id == target.id]
     logout_user()
     db.session.delete(target)
-    if room_dismissed:
-        socketio.emit('room_dismissed', 'The room was closed.', room=target.room.id)
-    else:
-        socketio.emit('people_changed_response', str([res]), room=room_obj.id)
     db.session.commit()
+    if room_dismissed:
+        socketio.emit('room_dismissed', 'The room was closed.', room=room_id)
+    else:
+        socketio.emit('people_changed_response', str([res]), room=room_id)
     return jsonify({'success': True}), 200
 
 @cinema_blueprint.route('/watch', methods=('GET', ))
@@ -147,20 +148,22 @@ def on_join(data):
     session_id = request.sid
     room_obj = current_user.room
     current_user.session_id = session_id
+    current_user.timestamp = datetime.datetime.utcnow()
     res = [user.username for user in room_obj.users]
     emit('people_changed_response', str(res), room=room_obj.id)
-    emit('returning_sid', session_id, room=session_id)
+    emit('returning_sid_room_id', {'session_id': session_id, 'room_id': str(room_obj.id)}, room=session_id)
+    if current_user.id == room_obj.owner_id:
+        emit('returning_secret', str(room_obj.secret), room=session_id)
     db.session.commit()
 
 @socketio.on('player_state_changed')
 def on_state_change(data):
-    room_obj = current_user.room
-    if request.sid == room_obj.owner.session_id:
+    room_obj = getattr(current_user, 'room', None)
+    if room_obj and request.sid == room_obj.owner.session_id:
         seek = data['seek']
         url = data['url']
         isPlaying = data['playing']
         vid = url[url.index('v=') + 2:]
-        same_vid = room_obj.current_playing_video_ID == vid
         room_obj.current_playing_video_ID = vid
         room_obj.current_isplaying = isPlaying
         room_obj.current_seek = seek
@@ -168,7 +171,6 @@ def on_state_change(data):
             'vid': vid,
             'playing': isPlaying,
             'seek': seek,
-            'same_vid': same_vid,
         }
         emit('player_state_changed_response', res, room=room_obj.id)
         db.session.commit()
@@ -178,15 +180,18 @@ def on_leave():
     session_id = request.sid
     target = User.query.filter_by(session_id = session_id).first()
     if target:
-        if target.room.owner_id == target.id:
-            db.session.delete(target.room)
-            emit('room_dismissed', 'The room was closed.', room=target.room.id)
-        else:
-            room_obj = target.room
-            res = [user.username for user in room_obj.users if not user.id == target.id]
-            emit('people_changed_response', str({'usernames': res}), room=room_obj.id)
-        db.session.delete(target)
-        db.session.commit()
+        time_diff = datetime.datetime.utcnow() - target.timestamp
+        if time_diff.total_seconds() > 25:
+            room_id = target.room_id
+            if target.room.owner_id == target.id:
+                db.session.delete(target.room)
+                emit('room_dismissed', 'The room was closed.', room=room_id)
+            else:
+                room_obj = target.room
+                res = [user.username for user in room_obj.users if not user.id == target.id]
+                emit('people_changed_response', str({'usernames': res}), room=room_id)
+            db.session.delete(target)
+            db.session.commit()
 
 ##############################
 #### For Debuging Purpose ####

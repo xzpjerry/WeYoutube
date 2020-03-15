@@ -5,8 +5,8 @@ var firstScriptTag = document.getElementsByTagName('script')[0];
 firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
 var player;
+var player_is_ready = false;
 var socket = io();
-
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '360',
@@ -14,9 +14,10 @@ function onYouTubeIframeAPIReady() {
         videoId: '',
         playerVars: {
             enablejsapi: 1,
-            control: 0,
+            controls: 0,
             loop: 1,
             cc_lang_pref: 'en',
+            rel: 0,
         },
         events: {
             'onReady': onPlayerReady,
@@ -29,27 +30,40 @@ function onPlayerReady(event) {
         url: "/get_play_detail",
         type: 'GET',
         success: function(res) {
-            event.target.loadVideoById({
+            player.loadVideoById({
                 'videoId': res['vid'],
                 'startSeconds': res['seek'],
                 'suggestedQuality': 'large'
             })
-            if(!res['playing']){
-                event.target.pauseVideo()
+            if(res['playing']) {
+                player.playVideo()
             } else {
-                event.target.playVideo()
+                player.pauseVideo()
             }
+            player_is_ready = true
         }
     });
 }
-
-
-socket.on('player_state_changed_response', function(data) {
-    if(data['same_vid']){
-        player.seekTo(data['seek'], true) 
-        if(data['playing']) {
+function isString(o) {
+    return typeof o == "string" || (typeof o == "object" && o.constructor === String);
+}
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+async function until(fn){
+    while(!fn()){
+        await sleep(0)
+    }
+}
+async function apply_update(data) {
+    await until(() => isString(player.getVideoUrl()) == true)
+    if(player.getVideoUrl().includes(data['vid'])){
+        if(Math.abs(data['seek'] - player.getCurrentTime()) > 5){
+            player.seekTo(data['seek'], true)    
+        }
+        if(data['playing'] && player.getPlayerState() != 1) {
             player.playVideo()
-        } else {
+        } else if(!data['playing'] && player.getPlayerState() == 1) {
             player.pauseVideo()
         }
     } else {
@@ -59,7 +73,7 @@ socket.on('player_state_changed_response', function(data) {
             'suggestedQuality': 'large'
         })
     }
-});
+}
 
 socket.on('connect', function(data) {
     socket.emit('join', 'I\'m in');
@@ -71,3 +85,6 @@ socket.on('room_dismissed', function(data) {
     alert(data)
     window.location.href = '/'
 });
+socket.on('player_state_changed_response', async (data) => {
+    apply_update(data);
+})

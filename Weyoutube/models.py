@@ -11,12 +11,12 @@ class Room(db.Model):
     secret = db.Column(db.SmallInteger)
     current_playing_video_ID = db.Column(db.String(24), default = 'QaQdY7iI75c')
     current_isplaying = db.Column(db.Boolean, default = False)
-    current_seek = db.Column(db.Float, default=10.0)
+    current_seek = db.Column(db.Float, default=0.0)
 
-    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     owner = db.relationship('User', foreign_keys=owner_id, backref = db.backref('owned_room', lazy = True, uselist = False, cascade="all, delete"), uselist=False, cascade="all, delete")
     
-    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow())
 
     @classmethod
     def delete_expired(cls):
@@ -40,5 +40,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(32), unique = True)
     room_id = db.Column(db.Integer, db.ForeignKey('room.id'), default=-1)
     room = db.relationship('Room', foreign_keys=room_id, backref = db.backref('users', lazy = True, cascade='all, delete'), post_update=True, uselist=False)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+
     def __repr__(self):
         return 'User ' + str(self.id) 
