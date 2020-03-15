@@ -45,7 +45,7 @@ function onPlayerReady(event) {
 }
 function onPlayerStateChange(event) {
     if(!just_ready) {
-    socket.emit('player_state_changed', 
+        socket.emit('player_state_changed', 
         { 
             seek: player.getCurrentTime(),
             url: player.getVideoUrl(),
@@ -54,6 +54,24 @@ function onPlayerStateChange(event) {
     );
     }
     just_ready = false
+}
+
+function matchYoutubeUrl(url) {
+    var p = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$/;
+    if(url.match(p)){
+        return url.match(p)[1];
+    }
+    return false;
+}
+
+function check_and_apply(sender){
+    var url = $('#txt').val();
+    var id = matchYoutubeUrl(url);
+    if(id!=false){
+        player.loadVideoById(id, 0, "large")
+    }else{
+        alert('Incorrect URL');
+    }
 }
 
 socket.on('connect', function(data) {
