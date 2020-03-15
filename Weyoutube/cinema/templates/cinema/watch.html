@@ -10,40 +10,40 @@
   <br>
   <a>Currently in the room:</a><a id="roster"></a>
   <br>
-    <div id="player"></div>
-    <script src="{{ url_for('cinema.static', filename='cinema/socket.io.js') }}"></script>
-    {% if not current_user.session_id == current_user.room.owner.session_id %}
-      <script src="{{ url_for('cinema.static', filename='cinema/watch_as_guest.js') }}"></script>
-    {% else %}
-      <br>
-      <input type="text" id="txt" placeholder="Type Youtube url" />
-      <input type="button" onclick="check_and_apply(this)" value="Apply URL" />
-      <br>
-      <p id="secret">Room secret: </p>
-      <script src="{{ url_for('cinema.static', filename='cinema/watch_as_owner.js') }}"></script>
-    {% endif %}
+  <div id="player"></div>
+  <script src="{{ url_for('cinema.static', filename='cinema/socket.io.js') }}"></script>
+  {% if not current_user.session_id == current_user.room.owner.session_id %}
+    <script src="{{ url_for('cinema.static', filename='cinema/watch_as_guest.js') }}"></script>
+  {% else %}
+    <br>
+    <input type="text" id="txt" placeholder="Type Youtube url" />
+    <input type="button" onclick="check_and_apply(this)" value="Apply URL" />
+    <br>
+    <p id="secret">Room secret: </p>
+    <script src="{{ url_for('cinema.static', filename='cinema/watch_as_owner.js') }}"></script>
+  {% endif %}
 
-    <script>
-      var sid;
-      socket.on('returning_sid_room_id', function(data) {
-        sid = data['session_id'];
-        $('#room_id').append(data['room_id'])
-      });
-      function leaving(){
-        $.ajax({
-          type: "DELETE",
-          url: "/leave/" + sid,
-          success: function()
-            {
-              window.location.href = "/";
-            },
-          error: function(xhr){
-              var error = JSON.parse(xhr.responseText);
-              alert(error['errors']);
-            }
-          });
-      }
-    </script>
+  <script>
+    var sid;
+    socket.on('returning_sid_room_id', function(data) {
+      sid = data['session_id'];
+      $('#room_id').append(data['room_id'])
+    });
+    function leaving(){
+      $.ajax({
+        type: "DELETE",
+        url: "/leave/" + sid,
+        success: function()
+          {
+            window.location.href = "/";
+          },
+        error: function(xhr){
+            var error = JSON.parse(xhr.responseText);
+            alert(error['errors']);
+          }
+        });
+    }
+  </script>
   
 
 {% endblock %}

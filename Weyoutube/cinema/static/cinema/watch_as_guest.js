@@ -4,6 +4,11 @@ tag.src = "https://www.youtube.com/iframe_api";
 var firstScriptTag = document.getElementsByTagName('script')[0];
 firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
+var ua = window.navigator.userAgent;
+var iOS = !!ua.match(/iPad/i) || !!ua.match(/iPhone/i);
+var webkit = !!ua.match(/WebKit/i);
+var iOSSafari = iOS && webkit && !ua.match(/CriOS/i);
+
 var player;
 var player_is_ready = false;
 var socket = io();
@@ -67,11 +72,16 @@ async function apply_update(data) {
             player.pauseVideo()
         }
     } else {
-        player.loadVideoById({
-            'videoId': data['vid'],
-            'startSeconds': data['seek'],
-            'suggestedQuality': 'large'
-        })
+        if(!iOSSafari){
+            player.loadVideoById({
+                'videoId': data['vid'],
+                'startSeconds': data['seek'],
+                'suggestedQuality': 'large'
+            })
+        } else {
+            alert('Video changed. Because of the iOS restriction, website cannot play the video automatically, you would need to press the video to play it.')
+            location.reload()
+        }
     }
 }
 

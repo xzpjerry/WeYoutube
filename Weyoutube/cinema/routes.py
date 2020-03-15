@@ -143,18 +143,19 @@ def get_play_detail():
 
 @socketio.on('join')
 def on_join(data):
-    room_id = current_user.room.id
-    join_room(room_id)
-    session_id = request.sid
-    room_obj = current_user.room
-    current_user.session_id = session_id
-    current_user.timestamp = datetime.datetime.utcnow()
-    res = [user.username for user in room_obj.users]
-    emit('people_changed_response', str(res), room=room_obj.id)
-    emit('returning_sid_room_id', {'session_id': session_id, 'room_id': str(room_obj.id)}, room=session_id)
-    if current_user.id == room_obj.owner_id:
-        emit('returning_secret', str(room_obj.secret), room=session_id)
-    db.session.commit()
+    room_obj = getattr(current_user, 'room', None)
+    if room_obj:
+        room_id = room_obj.id
+        join_room(room_id)
+        session_id = request.sid
+        current_user.session_id = session_id
+        current_user.timestamp = datetime.datetime.utcnow()
+        res = [user.username for user in room_obj.users]
+        db.session.commit()
+        emit('people_changed_response', str(res), room=room_obj.id)
+        emit('returning_sid_room_id', {'session_id': session_id, 'room_id': str(room_obj.id)}, room=session_id)
+        if current_user.id == room_obj.owner_id:
+            emit('returning_secret', str(room_obj.secret), room=session_id)
 
 @socketio.on('player_state_changed')
 def on_state_change(data):
@@ -167,13 +168,13 @@ def on_state_change(data):
         room_obj.current_playing_video_ID = vid
         room_obj.current_isplaying = isPlaying
         room_obj.current_seek = seek
+        db.session.commit()
         res = {
             'vid': vid,
             'playing': isPlaying,
             'seek': seek,
         }
         emit('player_state_changed_response', res, room=room_obj.id)
-        db.session.commit()
 
 @socketio.on('disconnect')
 def on_leave():
