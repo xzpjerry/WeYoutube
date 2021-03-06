@@ -2,6 +2,7 @@ from flask import Flask
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
+from Weyoutube.config import config
 
 #######################
 #### Configuration ####
@@ -15,9 +16,9 @@ login_manager = LoginManager()
 #### Application Factory Function ####
 ######################################
 
-def create_app(config_filename=None):
-    app = Flask(__name__, instance_relative_config=True)
-    app.config.from_pyfile(config_filename)
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(config)
     initialize_extensions(app)
     register_blueprints(app)
     return app

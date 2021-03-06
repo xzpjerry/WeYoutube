@@ -37,6 +37,8 @@ python-socketio==4.4.0
     #   -c fix-requirements.txt
     #   -r requirements.in
     #   flask-socketio
+pyyaml==5.4.1
+    # via -r requirements.in
 six==1.14.0
     # via
     #   python-engineio
