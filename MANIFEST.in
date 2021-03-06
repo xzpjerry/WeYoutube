@@ -9,6 +9,7 @@ include weyoutube/*.pyx
 include weyoutube/templates/*
 include weyoutube/static/*
 include weyoutube/ttfs/*
+include weyoutube/_version.py
 recursive-include weyoutube/ *.css
 recursive-include weyoutube/ *.jpg
 recursive-include weyoutube/ *.png
