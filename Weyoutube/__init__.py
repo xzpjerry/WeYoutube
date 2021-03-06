@@ -2,7 +2,7 @@ from flask import Flask
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
-from Weyoutube.config import config
+from weyoutube.config import config
 
 #######################
 #### Configuration ####
@@ -37,7 +37,7 @@ def initialize_extensions(app):
     login_manager.session_protection = 'strong'
     login_manager.login_view = 'cinema.index'
     login_manager.init_app(app=app)
-    from Weyoutube.models import User
+    from weyoutube.models import User
     @login_manager.user_loader
     def load_user(id):
         return User.query.get(id)
@@ -50,7 +50,7 @@ def initialize_extensions(app):
 def register_blueprints(app):
     # Since the application instance is now created, register each Blueprint
     # with the Flask application instance (app)
-    from Weyoutube.cinema import cinema_blueprint
+    from weyoutube.cinema import cinema_blueprint
     app.register_blueprint(cinema_blueprint)
 
 app = create_app()

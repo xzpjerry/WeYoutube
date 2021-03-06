@@ -1,5 +1,5 @@
 from flask_login import UserMixin
-from Weyoutube import db
+from weyoutube import db
 import datetime
 
 class Room(db.Model):

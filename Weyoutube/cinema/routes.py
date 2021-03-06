@@ -9,8 +9,8 @@ from flask_login import login_required, current_user, logout_user, login_user
 from flask_socketio import join_room, leave_room, emit, send
 
 from . import cinema_blueprint
-from Weyoutube import db, socketio
-from Weyoutube.models import User, Room
+from weyoutube import db, socketio
+from weyoutube.models import User, Room
 
 ################
 #### helpers ####
