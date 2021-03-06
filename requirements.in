@@ -1,0 +1,8 @@
+-c fix-requirements.txt
+
+click
+Flask
+Flask-Login
+Flask-SocketIO
+Flask-SQLAlchemy
+python-socketio
