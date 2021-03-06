@@ -52,3 +52,5 @@ def register_blueprints(app):
     # with the Flask application instance (app)
     from Weyoutube.cinema import cinema_blueprint
     app.register_blueprint(cinema_blueprint)
+
+app = create_app()
